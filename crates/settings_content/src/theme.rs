@@ -170,6 +170,11 @@ pub struct ThemeSettingsContent {
     #[serde(rename = "experimental.theme_overrides")]
     pub experimental_theme_overrides: Option<ThemeStyleContent>,
 
+    /// EXPERIMENTAL: Overrides alpha level for all backgrounds in the current theme.
+    #[serde(rename = "experimental.global_opacity")]
+    #[schemars(range(min = 0.1, max = 1.0))]
+    pub experimental_global_opacity: Option<GlobalOpacity>,
+
     /// Overrides per theme
     ///
     /// These values will override the ones on the specified theme
@@ -227,6 +232,40 @@ impl Display for CodeFade {
 }
 
 impl From<f32> for CodeFade {
+    fn from(x: f32) -> Self {
+        Self(x)
+    }
+}
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    MergeFrom,
+    PartialEq,
+    PartialOrd,
+    derive_more::FromStr,
+)]
+#[serde(transparent)]
+pub struct GlobalOpacity(
+    #[serde(serialize_with = "serialize_f32_with_two_decimal_places")] pub f32,
+);
+
+impl Default for GlobalOpacity {
+    fn default() -> Self {
+        Self(1.0)
+    }
+}
+
+impl Display for GlobalOpacity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.2}", self.0)
+    }
+}
+impl From<f32> for GlobalOpacity {
     fn from(x: f32) -> Self {
         Self(x)
     }

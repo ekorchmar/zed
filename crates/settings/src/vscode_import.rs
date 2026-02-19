@@ -930,6 +930,7 @@ impl VsCodeSettings {
             unnecessary_code_fade: None,
             experimental_theme_overrides: None,
             theme_overrides: Default::default(),
+            experimental_global_opacity: None,
         }
     }
 

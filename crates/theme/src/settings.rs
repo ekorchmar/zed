@@ -135,6 +135,8 @@ pub struct ThemeSettings {
     pub ui_density: UiDensity,
     /// The amount of fading applied to unnecessary code.
     pub unnecessary_code_fade: f32,
+    /// Experimental setting to override transparency of theme-provided background colors
+    pub experimental_global_opacity: f32,
 }
 
 /// Returns the name of the default theme for the given [`Appearance`].
@@ -736,6 +738,7 @@ impl settings::Settings for ThemeSettings {
             icon_theme: icon_theme_selection,
             ui_density: content.ui_density.unwrap_or_default().into(),
             unnecessary_code_fade: content.unnecessary_code_fade.unwrap().0.clamp(0.0, 0.9),
+            experimental_global_opacity: content.experimental_global_opacity.unwrap_or_default().0.clamp(0.1, 1.0),
         }
     }
 }

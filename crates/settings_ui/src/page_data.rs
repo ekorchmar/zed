@@ -6794,7 +6794,7 @@ fn collaboration_page() -> SettingsPage {
         ]
     }
 
-    fn experimental_section() -> [SettingsPageItem; 9] {
+    fn experimental_section() -> [SettingsPageItem; 10] {
         [
             SettingsPageItem::SectionHeader("Experimental"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -6939,6 +6939,19 @@ fn collaboration_page() -> SettingsPage {
                             .audio
                             .get_or_insert_default()
                             .input_audio_device = value;
+                    },
+                }),
+                metadata: None,
+                files: USER,
+            }),
+            SettingsPageItem::SettingItem(SettingItem {
+                title: "Global opacity override",
+                description: "Forced transparency of otherwise opaque background colors",
+                field: Box::new(SettingField {
+                    json_path: Some("experimental.global_opacity"),
+                    pick: |settings_content| settings_content.theme.experimental_global_opacity.as_ref(),
+                    write: |settings_content, value| {
+                        settings_content.theme.experimental_global_opacity = value;
                     },
                 }),
                 metadata: None,
