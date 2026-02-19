@@ -62,7 +62,6 @@ use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashSet, VecDeque},
     future::Future,
-    mem,
     ops::Range,
     path::{Path, PathBuf},
     str::FromStr,
@@ -301,9 +300,6 @@ pub struct Repository {
     snapshot: RepositorySnapshot,
     commit_message_buffer: Option<Entity<Buffer>>,
     git_store: WeakEntity<GitStore>,
-    // For a local repository, holds paths that have had worktree events since the last status scan completed,
-    // and that should be examined during the next status scan.
-    paths_needing_status_update: BTreeSet<RepoPath>,
     job_sender: mpsc::UnboundedSender<GitJob>,
     active_jobs: HashMap<JobId, JobInfo>,
     pending_ops: SumTree<PendingOps>,
@@ -3760,7 +3756,6 @@ impl Repository {
             repository_state: state,
             commit_message_buffer: None,
             askpass_delegates: Default::default(),
-            paths_needing_status_update: Default::default(),
             latest_askpass_id: 0,
             job_sender,
             job_id: 0,
@@ -3790,7 +3785,6 @@ impl Repository {
             commit_message_buffer: None,
             git_store,
             pending_ops: Default::default(),
-            paths_needing_status_update: Default::default(),
             job_sender,
             repository_state,
             askpass_delegates: Default::default(),
@@ -5990,7 +5984,6 @@ impl Repository {
                 };
                 let (snapshot, events) = this
                     .update(&mut cx, |this, _| {
-                        this.paths_needing_status_update.clear();
                         compute_snapshot(
                             this.id,
                             this.work_directory_abs_path.clone(),
@@ -6197,24 +6190,16 @@ impl Repository {
         updates_tx: Option<mpsc::UnboundedSender<DownstreamUpdate>>,
         cx: &mut Context<Self>,
     ) {
-        self.paths_needing_status_update.extend(paths);
-
         let this = cx.weak_entity();
         let _ = self.send_keyed_job(
             Some(GitJobKey::RefreshStatuses),
             None,
             |state, mut cx| async move {
-                let (prev_snapshot, mut changed_paths) = this.update(&mut cx, |this, _| {
-                    (
-                        this.snapshot.clone(),
-                        mem::take(&mut this.paths_needing_status_update),
-                    )
-                })?;
+                let prev_snapshot = this.update(&mut cx, |this, _| this.snapshot.clone())?;
                 let RepositoryState::Local(LocalRepositoryState { backend, .. }) = state else {
                     bail!("not a local repository")
                 };
 
-                let paths = changed_paths.iter().cloned().collect::<Vec<_>>();
                 if paths.is_empty() {
                     return Ok(());
                 }
@@ -6226,6 +6211,7 @@ impl Repository {
                         let mut changed_path_statuses = Vec::new();
                         let prev_statuses = prev_snapshot.statuses_by_path.clone();
                         let mut cursor = prev_statuses.cursor::<PathProgress>(());
+                        let mut changed_paths = paths.into_iter().collect::<BTreeSet<_>>();
 
                         for (repo_path, status) in &*statuses.entries {
                             changed_paths.remove(repo_path);
